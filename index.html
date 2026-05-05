@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat en Tiempo Real</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f0f2f5; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        
+        #chat-container { display: flex; flex-direction: column; width: 100%; max-width: 600px; margin: auto; height: 100vh; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        
+        .message { padding: 10px 15px; border-radius: 18px; max-width: 75%; word-wrap: break-word; }
+        .message.incoming { background-color: #e4e6eb; align-self: flex-start; color: black; }
+        .message.outgoing { background-color: #0084ff; align-self: flex-end; color: white; }
+        .meta { font-size: 0.75rem; color: gray; margin-bottom: 2px; }
+        
+        #form-container { display: flex; padding: 10px; border-top: 1px solid #ccc; background: #fff; }
+        #input-message { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; outline: none; }
+        #btn-send { background: #0084ff; color: white; border: none; padding: 10px 20px; margin-left: 5px; border-radius: 20px; cursor: pointer; }
+        #btn-send:hover { background: #006bbd; }
+    </style>
+</head>
+<body>
+
+<div id="chat-container">
+    <div id="messages"></div>
+    <div id="form-container">
+        <input type="text" id="input-message" placeholder="Escribe un mensaje..." autocomplete="off">
+        <button id="btn-send">Enviar</button>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // ⚠️ REEMPLAZA ESTO CON TUS CONFIGURACIONES DE FIREBASE
+    const firebaseConfig = {
+    apiKey: "AIzaSyBgRvfFKV1uk16xO-jtChvc_NuVYLoHmGc",
+    authDomain: "real-chat-6328f.firebaseapp.com",
+    projectId: "real-chat-6328f",
+    storageBucket: "real-chat-6328f.firebasestorage.app",
+    messagingSenderId: "529382831236",
+    appId: "1:529382831236:web:250e5500f5fc8eaf533ed1"
+    };
+
+    // Inicializar Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const messagesRef = collection(db, "messages");
+
+    // Generar un identificador anónimo para el usuario actual en esta sesión
+    const userId = Math.random().toString(36).substring(2, 9);
+
+    const messagesDiv = document.getElementById("messages");
+    const inputMessage = document.getElementById("input-message");
+    const btnSend = document.getElementById("btn-send");
+
+    // Escuchar mensajes en tiempo real
+    const q = query(messagesRef, orderBy("createdAt", "asc"));
+    onSnapshot(q, (snapshot) => {
+        messagesDiv.innerHTML = "";
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            const messageElement = document.createElement("div");
+            
+            // Determinar si el mensaje es propio o de otro
+            const isMe = data.senderId === userId;
+            messageElement.classList.add("message", isMe ? "outgoing" : "incoming");
+            
+            // Estructura del mensaje
+            messageElement.innerHTML = `<div class="meta">${isMe ? 'Tú' : 'Usuario ' + data.senderId}</div><div>${data.text}</div>`;
+            messagesDiv.appendChild(messageElement);
+        });
+        // Auto-scroll al último mensaje
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
+    // Enviar Mensaje
+    async function sendMessage() {
+        const text = inputMessage.value.trim();
+        if (text === "") return;
+
+        inputMessage.value = ""; // Limpiar input inmediatamente
+
+        try {
+            await addDoc(messagesRef, {
+                text: text,
+                senderId: userId,
+                createdAt: serverTimestamp()
+            });
+        } catch (error) {
+            console.error("Error al enviar:", error);
+        }
+    }
+
+    btnSend.addEventListener("click", sendMessage);
+    inputMessage.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") sendMessage();
+    });
+</script>
+
+</body>
+</html>
